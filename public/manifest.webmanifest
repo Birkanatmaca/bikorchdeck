@@ -1,0 +1,10 @@
+{
+  "name": "Bikorch Deck",
+  "short_name": "Bikorch Deck",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0a0c10",
+  "theme_color": "#0a0c10",
+  "icons": [{ "src": "icon.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }]
+}

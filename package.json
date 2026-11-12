@@ -1,0 +1,14 @@
+{
+  "name": "bikorch-deck",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Bikorch Deck: USB ile bagli tablet icin gelistirici analiz ekrani",
+  "scripts": {
+    "start": "node server/index.js",
+    "apk": "node scripts/build-apk.js --install",
+    "kur": "node scripts/autostart.js",
+    "kaldir": "node scripts/autostart.js --remove",
+    "limit-kur": "node scripts/limit-setup.js",
+    "limit-kaldir": "node scripts/limit-setup.js --remove"
+  }
+}

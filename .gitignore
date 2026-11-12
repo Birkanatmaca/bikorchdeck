@@ -1,0 +1,13 @@
+# Bu bilgisayara özel veriler: ekran düzeni, profiller, Claude limitleri, simge ve kapak önbelleği
+data/
+# Ajan günlüğü
+*.log
+# APK derleme çıktısı
+android/build/
+# Yerel imza anahtarı (npm run apk ilk derlemede kendisi oluşturur)
+*.keystore
+# Claude Code / önizleme ayarları
+.claude/
+node_modules/
+.DS_Store
+Thumbs.db
