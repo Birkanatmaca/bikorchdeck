@@ -94,6 +94,16 @@ function icon(pid, file, cb) {
   ps('icon.ps1', ['-ProcId', String(pid), '-Out', file], { timeout: 15000 }, (err) => cb(err));
 }
 
+// "PROJE ADIYLA" bildirim sesi: Windows'un konuşma motoru (System.Speech) WAV dosyasına yazar.
+// Türkçe ses kuruluysa o seçilir. Metin ve yol komut satırına değil ortam değişkenine konur (kaçış sorunu olmasın).
+function speak(text, file, cb) {
+  const script = "Add-Type -AssemblyName System.Speech; $s = New-Object System.Speech.Synthesis.SpeechSynthesizer; "
+    + "$v = $s.GetInstalledVoices() | Where-Object { $_.VoiceInfo.Culture.Name -eq 'tr-TR' } | Select-Object -First 1; "
+    + "if ($v) { $s.SelectVoice($v.VoiceInfo.Name) }; $s.Rate = 1; $s.SetOutputToWaveFile($env:DECK_OUT); $s.Speak($env:DECK_TEXT); $s.Dispose()";
+  execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script],
+    { windowsHide: true, timeout: 20000, env: { ...process.env, DECK_TEXT: text, DECK_OUT: file } }, (err) => cb(err, 'audio/wav'));
+}
+
 function focus(hwnd, cb) {
   ps('focus.ps1', ['-Hwnd', String(hwnd)], { timeout: 8000 }, (err) => cb(err));
 }
@@ -115,5 +125,8 @@ const viaPs = (id) => (mode, cb) => ps('clean.ps1', ['-Mode', mode, '-Targets', 
 });
 const special = { dns: viaPs('dns'), recycle: viaPs('recycle') };
 
+// Nöbet alarmı: Windows oturumunu kilitler (Win+L ile aynı).
+const lock = (cb) => execFile('rundll32.exe', ['user32.dll,LockWorkStation'], { windowsHide: true, timeout: 5000 }, (e) => cb && cb(e));
+
 module.exports = {
-  icon, startMedia, media, mediaArt, volume, startCollector, sampleGpu, focus, cleanDefs, special };
+  lock, icon, startMedia, media, mediaArt, volume, speak, startCollector, sampleGpu, focus, cleanDefs, special };

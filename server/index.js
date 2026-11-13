@@ -6,8 +6,10 @@ const path = require('path');
 const os = require('os');
 const { execFile } = require('child_process');
 const claude = require('./claude');
+const codex = require('./codex');
 const clean = require('./clean');
 const bikorch = require('./bikorch');
+const guard = require('./guard');
 
 let plat;
 try { plat = require(`./platform/${process.platform}`); } catch (e) {
@@ -26,7 +28,7 @@ const state = {
   host: os.hostname(), os: process.platform, cores: os.cpus().length, cpuModel: os.cpus()[0].model.trim(),
   t: Date.now(), uptime: 0, cleanIds: CLEAN_IDS,
   cpu: { total: 0, cores: [] }, mem: { total: os.totalmem(), used: 0 },
-  gpu: null, net: { rx: 0, tx: 0 }, disks: [], windows: [], procs: [], memTop: [], claude: null, bikorch: null, notices: [], reclaim: null, limits: null, media: null, audio: null,
+  gpu: null, net: { rx: 0, tx: 0 }, disks: [], windows: [], procs: [], memTop: [], claude: null, codex: null, bikorch: null, notices: [], reclaim: null, limits: null, media: null, audio: null, link: '',
   netx: { iface: '', ip: '', ping: null, online: null, totRx: 0, totTx: 0 },
 };
 const hist = { cpu: [], mem: [], gpu: [], rx: [], tx: [] };
@@ -74,7 +76,7 @@ function cleanLayout(o) {
   if (typeof o.toast === 'boolean') out.toast = o.toast;
   if (typeof o.dock === 'boolean') out.dock = o.dock;
   if (Number.isInteger(o.vol) && o.vol >= 0 && o.vol <= 10) out.vol = o.vol;
-  if (word(o.tone)) out.tone = o.tone;
+  if (typeof o.tone === 'string' && /^[a-z0-9-]{1,40}$/.test(o.tone)) out.tone = o.tone; // kendi seslerin: my-<ad>
   return out;
 }
 
@@ -134,7 +136,8 @@ function profileOp(o) {
 function measure() {
   clean.run(plat, 'scan', CLEAN_IDS).then((items) => {
     const top = items.reduce((a, b) => (b.bytes > a.bytes ? b : a), { id: '', bytes: 0 });
-    state.reclaim = { bytes: items.reduce((s, i) => s + (i.bytes || 0), 0), top: top.id, topBytes: top.bytes, at: Date.now() };
+    state.reclaim = { bytes: items.reduce((s, i) => s + (i.bytes || 0), 0), top: top.id, topBytes: top.bytes, at: Date.now(),
+      items: items.filter((i) => i.bytes > 0).map(({ id, bytes }) => ({ id, bytes })) };
   }, () => {});
 }
 
@@ -148,13 +151,24 @@ function notice(n) {
 }
 
 // --- Claude kullanımı + Bikorch projeleri ---
-function sampleClaude() {
+// Claude Code ve ChatGPT Codex oturumları aynı mantıkla işlenir: proje adına çevrilir, biten işler bildirim olur.
+function agentSnap(name, mod) {
   try {
-    const c = claude.snapshot();
-    state.claude = c.usage;
-    c.events.forEach(notice);
-    state.bikorch = bikorch.snapshot(c.work, state.windows.some((w) => /^bikorch$/i.test(w.name)));
-  } catch (e) { console.error('[claude]', e.message); }
+    const c = mod.snapshot();
+    c.usage.sessions = c.usage.sessions.map(({ cwd, ...s }) => ({ ...s, project: bikorch.projectName(cwd, s.project) }));
+    // Bitti bildirimi Bikorch'taki proje adıyla gösterilir (çalışma klasörünün adıyla değil).
+    c.events.filter((e) => !bikorch.internal(e.cwd)).forEach(({ cwd, ...n }) => notice({ ...n, project: bikorch.projectName(cwd, n.project) }));
+    return c;
+  } catch (e) { console.error(`[${name}]`, e.message); return null; }
+}
+function sampleClaude() {
+  const c = agentSnap('claude', claude), x = agentSnap('codex', codex);
+  if (c) state.claude = c.usage;
+  if (x) state.codex = x.usage;
+  try {
+    const work = [...(c ? c.work.map((w) => ({ ...w, src: 'claude' })) : []), ...(x ? x.work : [])];
+    state.bikorch = bikorch.snapshot(work, state.windows.some((w) => /^bikorch$/i.test(w.name)));
+  } catch (e) { console.error('[bikorch]', e.message); }
 }
 
 // --- Tablet (USB): takılınca portu yönlendir, ekranı uyandır, paneli aç ---
@@ -162,6 +176,9 @@ const ADB = process.env.ADB || 'adb';
 const APP = 'com.bikorch.deck'; // android/ klasöründeki uygulama
 const ONLY = process.env.DEVDECK_SERIAL || ''; // doluysa yalnızca bu cihaz
 const tablets = new Set();
+// Tablet nasıl bağlı: kablosuz adb seri numarası "<ad>._adb-tls-connect._tcp" ya da "IP:port" olur.
+const isWifi = (s) => /_adb-tls-connect|^\d{1,3}(\.\d{1,3}){3}:\d+$/.test(s);
+const setLinkKind = () => { const t = [...tablets]; state.link = !t.length ? '' : t.every(isWifi) ? 'wifi' : 'usb'; };
 let androidClients = 0;
 const adb = (args, cb) => execFile(ADB, args, { windowsHide: true, timeout: 15000 }, (e, o) => cb && cb(e, String(o || '')));
 function attach(serial) {
@@ -169,6 +186,7 @@ function attach(serial) {
   adb(['-s', serial, 'reverse', `tcp:${PORT}`, `tcp:${PORT}`], (err) => {
     if (err) { tablets.delete(serial); return; } // bir sonraki turda yeniden denenir
     console.log('[tablet] bağlandı', serial);
+    setLinkKind();
     adb(['-s', serial, 'shell', 'input', 'keyevent', 'KEYCODE_WAKEUP']);
     // Panel tablette zaten açıksa kendiliğinden yeniden bağlanır; yalnızca açık değilse aç.
     setTimeout(() => {
@@ -190,9 +208,33 @@ function watchTablet() {
       const now = new Set(out.split('\n').map((l) => l.trim().split('\t')).filter((p) => p[1] === 'device').map((p) => p[0])
         .filter((s) => !ONLY || s === ONLY));
       for (const s of now) if (!tablets.has(s)) attach(s);
-      for (const s of tablets) if (!now.has(s)) { tablets.delete(s); console.log('[tablet] ayrıldı', s); }
+      for (const s of tablets) if (!now.has(s)) { tablets.delete(s); console.log('[tablet] ayrıldı', s); setLinkKind(); }
     }
     setTimeout(watchTablet, 3000);
+  });
+}
+
+// --- Tablet (Wi-Fi): tablette "Kablosuz hata ayıklama" açıksa ağda duyurulur; bu Mac/PC ile bir kez
+// eşleştirilmişse (adb pair) ajan ona kendisi bağlanır. Sonrası USB ile aynıdır: watchTablet onu
+// "device" olarak görür ve adb reverse yapar. Trafik adb'nin şifreli kanalından geçer; ajan yine yalnızca 127.0.0.1 dinler.
+// adb eşleşmiş cihaza çoğu zaman kendisi bağlanır (seri no "<ad>._adb-tls-connect._tcp" olur); bu döngü yalnızca
+// cihaz bir süre görünüp de bağlanmadıysa yedek olarak IP:port ile bağlanır, böylece aynı tablet iki kez eklenmez.
+const seen = new Map(); // mdns adı -> ilk görülme / son deneme zamanı
+function watchWifi() {
+  adb(['mdns', 'services'], (err, out) => {
+    if (err && err.code === 'ENOENT') return;
+    const now = Date.now();
+    for (const line of out.split('\n')) {
+      const m = /^(\S+)\s+_adb-tls-connect\._tcp\.?\s+(\d{1,3}(?:\.\d{1,3}){3}:\d{1,5})\s*$/.exec(line.trim());
+      if (!m) continue;
+      const [, name, addr] = m;
+      if ([...tablets].some((s) => s.startsWith(name + '.') || s === addr)) { seen.delete(name); continue; }
+      if (!seen.has(name)) { seen.set(name, now); continue; } // önce adb'nin kendi bağlanmasına fırsat ver
+      if (now - seen.get(name) < 15e3) continue;
+      seen.set(name, now);
+      adb(['connect', addr], (e, o) => { if (/connected to/i.test(o) && !/already/i.test(o)) console.log('[tablet] Wi-Fi ile bağlanıldı', addr); });
+    }
+    setTimeout(watchWifi, 10000);
   });
 }
 
@@ -276,6 +318,52 @@ function serveIcon(name, res) {
   job.then(() => sendIcon(res, file));
 }
 
+// --- "PROJE ADIYLA" bildirim sesi: biten işin proje adı bilgisayarda seslendirilir, data/voices içinde saklanır ---
+// Metni istemci gönderemez: yalnızca bildirim numarası gelir, cümleyi ajan kurar (n=test: örnek cümle).
+const VOICES = path.join(__dirname, '..', 'data', 'voices');
+const voiceJobs = new Map();
+function serveVoice(n, res) {
+  const no = state.notices.find((x) => String(x.id) === n);
+  if (!plat.speak || (!no && n !== 'test')) { res.writeHead(404).end(); return; }
+  const name = (no ? no.project : (state.bikorch && state.bikorch.projects[0] && state.bikorch.projects[0].name) || 'Bikorch Deck')
+    .replace(/[^\p{L}\p{N} ._-]/gu, ' ').replace(/[-_.]+/g, ' ').trim().slice(0, 40) || 'proje';
+  const text = no && no.outcome === 'error' ? `Eyvah! ${name} patladı!` : `${name} bitti kanka!`;
+  const key = require('crypto').createHash('sha1').update(text).digest('hex').slice(0, 16);
+  const file = path.join(VOICES, key + (process.platform === 'win32' ? '.wav' : '.m4a'));
+  const send = (type) => fs.readFile(file, (err, data) => {
+    if (err) { res.writeHead(404).end(); return; }
+    res.writeHead(200, { 'Content-Type': type || (file.endsWith('.wav') ? 'audio/wav' : 'audio/mp4'), 'Cache-Control': 'max-age=3600' }).end(data);
+  });
+  if (fs.existsSync(file)) { send(); return; }
+  let job = voiceJobs.get(key);
+  if (!job) {
+    fs.mkdirSync(VOICES, { recursive: true });
+    job = new Promise((resolve) => plat.speak(text, file, (err, type) => { voiceJobs.delete(key); resolve(err ? null : type); }));
+    voiceJobs.set(key, job);
+  }
+  job.then((type) => (type ? send(type) : res.writeHead(404).end()));
+}
+
+// --- Kendi seslerin: data/sounds klasörüne atılan ses dosyaları seçme ekranında görünür ---
+// Tablet yalnızca listedeki anahtarı ister; yol gönderemez.
+const MYSOUNDS = path.join(__dirname, '..', 'data', 'sounds');
+const AUDIO = { '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.bin': 'application/octet-stream', '.wasm': 'application/wasm', '.aac': 'audio/aac', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.oga': 'audio/ogg', '.opus': 'audio/ogg', '.flac': 'audio/flac' };
+const TR = { ç: 'c', ğ: 'g', ı: 'i', i̇: 'i', ö: 'o', ş: 's', ü: 'u' };
+function mySounds() {
+  let names = [];
+  try { names = fs.readdirSync(MYSOUNDS); } catch { return []; }
+  const out = [], used = new Set();
+  for (const f of names.sort()) {
+    if (!AUDIO[path.extname(f).toLowerCase()]) continue;
+    const base = path.basename(f, path.extname(f));
+    let slug = base.toLocaleLowerCase('tr').replace(/[çğıöşü]/g, (c) => TR[c]).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'ses';
+    while (used.has(slug)) slug += 'x';
+    used.add(slug);
+    out.push({ key: 'my-' + slug, name: base.slice(0, 40), file: f });
+  }
+  return out.slice(0, 60);
+}
+
 // --- Yayın ---
 const clients = new Set();
 function tick() {
@@ -291,14 +379,14 @@ function tick() {
 
 // --- HTTP ---
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
+  '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.m4a': 'audio/mp4', '.bin': 'application/octet-stream', '.wasm': 'application/wasm', '.webmanifest': 'application/manifest+json' };
 const sendJson = (res, code, obj) => res.writeHead(code, { 'Content-Type': 'application/json' }).end(JSON.stringify(obj));
 // JSON şartı: başka sitelerin bu uçlara gizlice istek atmasını (CSRF) engeller.
 const isJson = (req) => /^application\/json/.test(req.headers['content-type'] || '');
 
-function readJson(req, cb) {
+function readJson(req, cb, max = 16384) {
   let body = '';
-  req.on('data', (d) => { body += d; if (body.length > 16384) req.destroy(); });
+  req.on('data', (d) => { body += d; if (body.length > max) req.destroy(); });
   req.on('end', () => { try { cb(JSON.parse(body)); } catch { cb(null); } });
 }
 
@@ -396,7 +484,33 @@ const server = http.createServer((req, res) => {
     });
     return;
   }
+  // Nöbet modu (server/guard.js): ayarlar şifreyle değişir; fotoğraflar bu bilgisayarda kalır.
+  if (url.pathname === '/api/guard' && req.method === 'POST') {
+    if (!isJson(req)) { res.writeHead(415).end(); return; }
+    readJson(req, (o) => {
+      let r = null;
+      try { r = guard.op(o, plat); } catch (e) { console.error('[nöbet]', e.message); }
+      sendJson(res, r ? 200 : 400, r || { ok: false });
+    }, 256 * 1024);
+    return;
+  }
+  if (url.pathname === '/api/guard/alert' && req.method === 'POST') {
+    if (!isJson(req)) { res.writeHead(415).end(); return; }
+    readJson(req, (o) => {
+      let r = null;
+      try { r = guard.alert(o, plat); } catch (e) { console.error('[nöbet]', e.message); }
+      sendJson(res, r ? 200 : 400, r || { ok: false });
+    }, 4 * 1024 * 1024);
+    return;
+  }
   if (req.method !== 'GET') { res.writeHead(405).end(); return; }
+  if (url.pathname === '/api/guard') { sendJson(res, 200, guard.info()); return; }
+  if (url.pathname.startsWith('/guard/shot/')) {
+    const p = guard.shot(url.pathname.slice(12));
+    if (!p) { res.writeHead(404).end(); return; }
+    fs.readFile(p, (err, data) => err ? res.writeHead(404).end() : res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'max-age=86400' }).end(data));
+    return;
+  }
   if (url.pathname === '/media/art') {
     fs.readFile(plat.mediaArt || '', (err, data) => {
       if (err) { res.writeHead(404).end(); return; }
@@ -404,13 +518,26 @@ const server = http.createServer((req, res) => {
     });
     return;
   }
+  if (url.pathname === '/api/sounds') { sendJson(res, 200, mySounds().map(({ key, name }) => ({ key, name }))); return; }
+  if (url.pathname.startsWith('/mysound/')) {
+    const s = mySounds().find((x) => x.key === url.pathname.slice(9));
+    if (!s) { res.writeHead(404).end(); return; }
+    fs.readFile(path.join(MYSOUNDS, s.file), (err, data) => {
+      if (err) { res.writeHead(404).end(); return; }
+      res.writeHead(200, { 'Content-Type': AUDIO[path.extname(s.file).toLowerCase()], 'Cache-Control': 'no-cache' }).end(data);
+    });
+    return;
+  }
+  if (url.pathname === '/voice') { serveVoice(url.searchParams.get('n') || '', res); return; }
   if (url.pathname.startsWith('/icon/')) { serveIcon(decodeURIComponent(url.pathname.slice(6)), res); return; }
   const rel = url.pathname === '/' ? 'index.html' : decodeURIComponent(url.pathname.slice(1));
   const file = path.resolve(PUB, rel);
   if (!file.startsWith(PUB + path.sep)) { res.writeHead(403).end(); return; }
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404).end('yok'); return; }
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
+    // Yüz tanıma modelleri (~7 MB) değişmez: tablet her açılışta yeniden indirmesin.
+    const cache = rel.startsWith('vendor/') ? 'max-age=2592000' : 'no-cache';
+    res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': cache });
     res.end(data);
   });
 });
@@ -430,6 +557,7 @@ server.listen(PORT, HOST, () => {
   setInterval(() => plat.sampleGpu(state), 2000);
   setInterval(sampleClaude, 3000);
   watchTablet();
+  watchWifi();
   sampleNet(); sampleLimits();
   setInterval(sampleLimits, 15000);
   setInterval(sampleNet, 10000);

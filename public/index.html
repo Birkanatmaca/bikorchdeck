@@ -19,6 +19,7 @@
     <span class="dim">ÇALIŞMA <b id="uptime">—</b></span>
     <span id="link" class="link off">BAĞLANTI YOK</span>
     <span id="clock">--:--:--</span>
+    <button id="guardBtn" class="gbtn" aria-label="Nöbet"><svg viewBox="0 0 24 24"><path d="M12 2.5 4.5 5.4v5.9c0 4.7 3.2 8.6 7.5 10.2 4.3-1.6 7.5-5.5 7.5-10.2V5.4z"/><circle class="eye" cx="12" cy="11.5" r="2.6"/></svg><span>NÖBET</span></button>
     <button id="setBtn" class="ibtn" aria-label="Ayarlar"><svg viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
   </div>
   <div class="hright edit">
@@ -35,13 +36,14 @@
 <main id="grid"></main>
 <footer id="dock"><div class="dkpanel">
   <div id="dockBar"></div><i id="dockSep"></i>
-  <button id="cleanBtn" class="turbo" aria-label="Temizlik"><svg viewBox="0 0 24 24"><g transform="rotate(45 12 12) translate(12 12) scale(.92) translate(-12 -12)"><path class="fl" d="M9.8 18.6h4.4c0 2-1 3.3-2.2 4.6-1.2-1.3-2.2-2.6-2.2-4.6z"/><path d="M7.6 12.2 4.2 16.4v3.8l3.4-2.2zM16.4 12.2l3.4 4.2v3.8L16.4 18z" opacity=".75"/><path fill-rule="evenodd" d="M12 1.6c3.4 3 4.6 7.2 4.6 10.8V17a.8.8 0 0 1-.8.8H8.2A.8.8 0 0 1 7.4 17v-4.6C7.4 8.8 8.6 4.6 12 1.6zM12 7.6a2.1 2.1 0 1 0 0 4.2 2.1 2.1 0 0 0 0-4.2z"/></g></svg><span id="reclaim"><b>—</b><small>ölçülüyor…</small></span></button>
+  <button id="cleanBtn" class="turbo" aria-label="Temizlik"><svg viewBox="0 0 24 24"><g transform="rotate(45 12 12) translate(12 12) scale(.92) translate(-12 -12)"><path class="fl" d="M9.8 18.6h4.4c0 2-1 3.3-2.2 4.6-1.2-1.3-2.2-2.6-2.2-4.6z"/><path d="M7.6 12.2 4.2 16.4v3.8l3.4-2.2zM16.4 12.2l3.4 4.2v3.8L16.4 18z" opacity=".75"/><path fill-rule="evenodd" d="M12 1.6c3.4 3 4.6 7.2 4.6 10.8V17a.8.8 0 0 1-.8.8H8.2A.8.8 0 0 1 7.4 17v-4.6C7.4 8.8 8.6 4.6 12 1.6zM12 7.6a2.1 2.1 0 1 0 0 4.2 2.1 2.1 0 0 0 0-4.2z"/></g></svg><span id="reclaim"><b>—</b><small>ölçülüyor…</small><u></u></span></button>
 </div></footer>
 <div id="toast" hidden></div>
 
 <div id="sheet" class="sheet" hidden>
-  <div class="card">
+  <div class="card wide">
     <h2>BİLGİSAYAR TEMİZLİĞİ <span id="cleanState" class="dim"></span></h2>
+    <div id="cleanDisk" class="cdisk"></div>
     <div id="cleanList" class="clist"></div>
     <div class="cfoot">
       <span id="cleanTotal" class="dim"></span>
@@ -56,6 +58,14 @@
     <h2>AYARLAR</h2>
     <div id="setList" class="clist"></div>
     <div class="cfoot"><span></span><button id="setEdit" class="hbtn">EKRANI DÜZENLE</button><button id="setClose" class="hbtn go">KAPAT</button></div>
+  </div>
+</div>
+
+<div id="soundSheet" class="sheet" hidden>
+  <div class="card wide">
+    <h2>BİTTİ SESİ <span class="dim">dokun: seç ve dinle</span></h2>
+    <div id="soundList" class="clist"></div>
+    <div class="cfoot"><span class="dim">Hata sesi: komik seslerde hüzünlü trombon çalar</span><button id="soundErr" class="hbtn">HATA SESİNİ DİNLE</button><button id="soundClose" class="hbtn go">TAMAM</button></div>
   </div>
 </div>
 
@@ -74,6 +84,42 @@
     <div class="cfoot"><span></span><button id="addClose" class="hbtn">KAPAT</button></div>
   </div>
 </div>
+<div id="guardSheet" class="sheet" hidden>
+  <div class="card wide gcard">
+    <h2>NÖBET MODU <span class="dim">tanımadığı biri masana gelirse alarm, fotoğraf ve kilit</span></h2>
+    <div class="gbody">
+      <div class="gcam"><div id="gView"></div><canvas id="gBoxes"></canvas><div id="gCamMsg" class="gmsg">Kamera kapalı</div>
+        <div id="gEnroll" class="genroll" hidden><b id="gEnrollMsg"></b><u><i id="gEnrollBar"></i></u></div></div>
+      <div id="guardList" class="clist"></div>
+    </div>
+    <div class="cap">MASANA GELENLER</div>
+    <div id="gShots" class="gshots"></div>
+    <div class="cfoot"><span id="gNote" class="dim"></span><button id="gClear" class="hbtn">FOTOĞRAFLARI SİL</button><button id="guardClose" class="hbtn go">KAPAT</button></div>
+  </div>
+</div>
+
+<!-- Şifre / uyarı / alarm ekranı (nöbet modu): solda durum, sağda tuş takımı -->
+<div id="gOver" class="gover" hidden>
+  <div class="gbox">
+    <div class="gside">
+      <div id="gIcon" class="gicon"></div>
+      <h1 id="gTitle"></h1>
+      <p id="gText"></p>
+      <div id="gCount" class="gcount"></div>
+      <div id="gDots" class="gdots"></div>
+      <button id="gCancel" class="hbtn" hidden>VAZGEÇ</button>
+    </div>
+    <div id="gPin" class="gpin"><div id="gKeys" class="gkeys"></div></div>
+    <div id="gAfter" class="gafter" hidden></div>
+  </div>
+</div>
+<!-- Fotoğraf görüntüleyici: önceki / sonraki / sil -->
+<div id="gPhoto" class="gphoto" hidden>
+  <div class="gpimg"><img alt=""><button id="gpPrev" class="gpnav prev" aria-label="Önceki">‹</button><button id="gpNext" class="gpnav next" aria-label="Sonraki">›</button></div>
+  <div class="gpbar"><span id="gpInfo"></span><button id="gpDel" class="hbtn bad">SİL</button><button id="gpClose" class="hbtn go">KAPAT</button></div>
+</div>
+<video id="gCam" playsinline muted></video>
 <script src="app.js"></script>
+<script src="guard.js"></script>
 </body>
 </html>

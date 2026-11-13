@@ -1,7 +1,7 @@
 /* Varsayılan tema: Bikorch masaüstü uygulamasının renkleri (globals.css) */
 :root {
   --bg: #0a0c10; --panel: #12151a; --line: #2a3039; --text: #f4f5f7; --dim: #818a98;
-  --acc: #8b7cf8; --acc2: #4ea1ff; --ok: #3ccb7f; --warn: #f2b84b; --bad: #f05d68; --claude: #e08a5b;
+  --acc: #8b7cf8; --acc2: #4ea1ff; --ok: #3ccb7f; --warn: #f2b84b; --bad: #f05d68; --claude: #e08a5b; --codex: #3fb6a8;
   --item: #181c23; --item-on: #231f3d; --track: #1f242c; --radius: 10px;
   --mono: ui-monospace, "JetBrains Mono", "Cascadia Mono", Consolas, "Roboto Mono", monospace;
   --font: Inter, system-ui, "Segoe UI", Roboto, sans-serif;
@@ -20,7 +20,7 @@
   --acc: #f2f2f2; --acc2: #9a9a9a; --item: #1a1a1a; --item-on: #262626; --track: #202020; --radius: 2px;
   --font: system-ui, "Segoe UI", Roboto, sans-serif; }
 [data-theme="acik"] { --bg: #e9edf0; --panel: #ffffff; --line: #d3dae0; --text: #17222b; --dim: #6b7c88;
-  --acc: #0a8f5b; --acc2: #1273c9; --ok: #0a8f5b; --warn: #c97a00; --bad: #d42f41; --claude: #c2622d;
+  --acc: #0a8f5b; --acc2: #1273c9; --ok: #0a8f5b; --warn: #c97a00; --bad: #d42f41; --claude: #c2622d; --codex: #12877a;
   --item: #f1f4f6; --item-on: #dff3ea; --track: #e3e8ec; --radius: 10px; --font: system-ui, "Segoe UI", Roboto, sans-serif; }
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -42,6 +42,9 @@ body.editing .hright.edit { display: flex; }
 #clock { font-size: 1.25em; font-variant-numeric: tabular-nums; }
 .link { padding: .15em .6em; border: 1px solid var(--acc); color: var(--acc); border-radius: 3px; font-size: .8em; letter-spacing: .1em; }
 .link.off { border-color: var(--bad); color: var(--bad); animation: blink 1s steps(2) infinite; }
+.link { display: inline-flex; align-items: center; gap: .45em; }
+.link svg { width: 1.15em; height: 1.15em; flex: none; }
+.link.wifi { border-color: var(--acc2); color: var(--acc2); }
 @keyframes blink { 50% { opacity: .35; } }
 .hbtn { background: none; border: 1px solid var(--line); color: var(--text); font: inherit; font-size: .85em;
   letter-spacing: .12em; padding: 0 1em; height: 2.9em; border-radius: 4px; }
@@ -56,6 +59,9 @@ body.editing .hright.edit { display: flex; }
 #reclaim { text-align: left; line-height: 1.15; }
 #reclaim b { display: block; font-size: 1.05em; font-variant-numeric: tabular-nums; }
 #reclaim small { display: block; color: var(--dim); font-size: .7em; }
+#reclaim u { display: flex; gap: 2px; height: .32em; margin-top: .35em; border-radius: 9px; overflow: hidden; min-width: 10em; }
+#reclaim u:empty { display: none; }
+#reclaim u i { min-width: 3px; }
 .hbtn:active { background: var(--line); }
 .hbtn.go { border-color: var(--acc); color: var(--acc); }
 .hbtn:disabled { opacity: .35; }
@@ -153,6 +159,31 @@ canvas { flex: 1; min-width: 0; min-height: 0; width: 100%; display: block; }
   padding: .6em 1.6em; border-radius: 99px; }
 .seg button.on { background: var(--acc); color: #fff; }
 .w-ai.w-claude .seg button.on { background: var(--claude); }
+.w-ai.w-codex .seg button.on { background: var(--codex); }
+/* Sekmedeki "iş sürüyor" noktası */
+.seg button { display: inline-flex; align-items: center; gap: .5em; }
+.seg .busy { display: none; width: .5em; height: .5em; border-radius: 50%; background: var(--acc); animation: pulse 1.2s ease-in-out infinite; }
+.seg button[data-sw="claude"] .busy { background: var(--claude); }
+.seg button[data-sw="codex"] .busy { background: var(--codex); }
+.seg button.on .busy { background: #fff; }
+.seg button.run .busy { display: block; }
+
+/* Codex */
+.w-codex::before { background: var(--codex); }
+.w-codex .tile b { color: var(--codex); }
+.w-codex .chip.on { border-color: var(--codex); color: var(--codex); }
+.w-codex canvas.hc { flex: 0 1 3.2em; min-height: 1.6em; }
+.w-codex .sess { flex: 1 1 4em; }
+.w-codex .s-calisiyor { border-left-color: var(--codex); }
+.w-codex .s-calisiyor .dot { background: var(--codex); box-shadow: 0 0 .7em var(--codex); }
+.w-codex .s-calisiyor .st, .w-codex .s-calisiyor .r b { color: var(--codex); }
+.reply { flex: none; background: var(--item); border-left: 2px solid var(--codex); border-radius: 4px; padding: .5em .7em; font-size: .85em;
+  line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.reply b { color: var(--codex); margin-right: .6em; font-weight: 600; }
+/* Bikorch listesinde işi yapan ajan */
+.ag { font-size: .7em; letter-spacing: .1em; font-weight: 700; padding: .1em .45em; border-radius: 3px; margin-right: .6em; border: 1px solid; }
+.ag-claude { color: var(--claude); border-color: var(--claude); }
+.ag-codex { color: var(--codex); border-color: var(--codex); }
 
 /* Alt şerit (dock): açık pencereler; dokununca bilgisayarda öne gelir, etkin olan büyük görünür */
 #dock { flex: none; display: flex; justify-content: center; padding: 0 .5em .5em; }
@@ -293,6 +324,19 @@ body.editing .ed { display: flex; }
 .crow .val button { width: 2.6em; height: 2.6em; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; font-size: 1em; }
 .crow .val i { font-style: normal; min-width: 1.5em; text-align: center; color: var(--text); }
 
+/* Ses seçme ekranı */
+.card.wide { width: min(64em, 94vw); }
+.sgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(10.5em, 1fr)); gap: .5em; flex: none; }
+.snd { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: .7em; align-items: center; text-align: left;
+  background: var(--item); border: 1px solid transparent; border-radius: 8px; padding: .7em .8em; color: var(--text); font: inherit; min-width: 0; }
+.snd .ic { grid-row: span 2; font-size: 1.7em; line-height: 1; }
+.snd b { font-size: .85em; letter-spacing: .08em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.snd small { color: var(--dim); font-size: .72em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.snd:active { transform: scale(.97); }
+.snd.sel { border-color: var(--acc); background: var(--item-on); }
+.snd.sel b { color: var(--acc); }
+#soundList .cap { margin-top: .5em; }
+
 /* Dikey tutulursa: widget'lar alt alta, kaydırılabilir */
 @media (orientation: portrait) {
   html, body { overflow: auto; }
@@ -301,3 +345,120 @@ body.editing .ed { display: flex; }
   .p { min-height: 13em; }
   .hinfo .dim, .hright .dim { display: none; }
 }
+
+/* Nöbet modu: başlık düğmesi */
+.gbtn { background: none; border: 1px solid var(--line); color: var(--dim); font: inherit; font-size: .8em; letter-spacing: .1em;
+  display: inline-flex; align-items: center; gap: .45em; padding: .15em .7em .15em .45em; border-radius: 3px; }
+.gbtn svg { width: 1.5em; height: 1.5em; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+.gbtn .eye { fill: currentColor; stroke: none; opacity: 0; }
+.gbtn.on { border-color: var(--ok); color: var(--ok); }
+.gbtn.on .eye { opacity: 1; animation: geye 2.4s ease-in-out infinite; }
+.gbtn.paused { border-color: var(--warn); color: var(--warn); }
+.gbtn.err { border-color: var(--bad); color: var(--bad); }
+@keyframes geye { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+/* Algılama için görünür alanda durmalı (Chrome ekran dışındaki videoyu durdurabilir); neredeyse saydam 2 piksel */
+#gCam { position: fixed; left: 0; top: 0; width: 2px; height: 2px; opacity: .01; pointer-events: none; z-index: -1; }
+
+/* Nöbet ayarları */
+.gbody { display: grid; grid-template-columns: 1.1fr 1fr; gap: 1em; min-height: 0; }
+.gcam { position: relative; background: #000; border-radius: 8px; overflow: hidden; aspect-ratio: 4 / 3; align-self: start; }
+#gView video, #gView { position: absolute; inset: 0; width: 100%; height: 100%; }
+#gView video { z-index: 0; object-fit: cover; transform: scaleX(-1); opacity: 1; position: absolute; left: 0; top: 0; pointer-events: none; }
+#gBoxes { position: absolute; inset: 0; width: 100%; height: 100%; }
+.gmsg { position: absolute; inset: 0; display: grid; place-items: center; color: var(--dim); font-size: .9em; text-align: center; padding: 1em; }
+.genroll { position: absolute; left: 0; right: 0; bottom: 0; padding: .8em 1em; background: linear-gradient(transparent, #000c); color: #fff; }
+.genroll b { display: block; font-size: 1.15em; margin-bottom: .5em; }
+.genroll u { display: block; height: .45em; background: #fff3; border-radius: 9px; overflow: hidden; }
+.genroll i { display: block; height: 100%; width: 0; background: var(--ok); transition: width .3s; }
+#guardList { max-height: 100%; }
+.gshots { display: flex; gap: .6em; overflow-x: auto; touch-action: pan-x; min-height: 7.5em; flex: none; }
+.gshots .none { color: var(--dim); font-size: .85em; align-self: center; }
+.gshot { flex: none; width: 9.5em; text-align: center; font-size: .72em; color: var(--dim); background: none; border: 0; font-family: inherit; }
+.gshot img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 5px; display: block; margin-bottom: .3em; border: 1px solid var(--line); }
+.gshot.alarm img { border-color: var(--bad); }
+
+/* Şifre / uyarı / alarm: ortada bir kart; solda simge, başlık, açıklama ve şifre noktaları, sağda tuş takımı */
+.gover { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; --g: var(--acc);
+  background: color-mix(in srgb, var(--bg) 96%, #000); }
+.gover.warn { --g: var(--warn); background: radial-gradient(ellipse at center, color-mix(in srgb, var(--warn) 22%, var(--bg)), var(--bg) 70%); }
+.gover.alarm { --g: #ff4d5e; animation: galarm .55s steps(2) infinite; }
+.gover.ok { --g: var(--ok); background: radial-gradient(ellipse at center, color-mix(in srgb, var(--ok) 18%, var(--bg)), var(--bg) 70%); }
+@keyframes galarm { 0% { background: #c0101f; } 100% { background: #3a0509; } }
+.gbox { display: flex; align-items: center; gap: 3.2em; padding: 2.4em 3em; border-radius: 22px; color: var(--text);
+  background: color-mix(in srgb, var(--panel) 94%, transparent); border: 1px solid color-mix(in srgb, var(--g) 45%, var(--line));
+  box-shadow: 0 0 0 1px #0004, 0 2em 5em #0008, 0 0 4em color-mix(in srgb, var(--g) 18%, transparent); max-width: 94vw; }
+.gover.alarm .gbox { background: #14070acc; color: #fff; }
+.gside { display: flex; flex-direction: column; align-items: center; text-align: center; gap: .55em; width: 21em; }
+.gicon { width: 5.4em; height: 5.4em; border-radius: 50%; display: grid; place-items: center; color: var(--g);
+  background: color-mix(in srgb, var(--g) 14%, transparent); border: 1px solid color-mix(in srgb, var(--g) 40%, transparent); margin-bottom: .4em; }
+.gover.alarm .gicon, .gover.warn .gicon { animation: gpulse 1s ease-in-out infinite; }
+@keyframes gpulse { 50% { transform: scale(1.08); box-shadow: 0 0 2em color-mix(in srgb, var(--g) 50%, transparent); } }
+.gicon svg, .gkeys svg { width: 52%; height: 52%; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.gicon svg .f, .gkeys svg .f { fill: currentColor; stroke: none; }
+.gbox h1 { font-size: 1.7em; letter-spacing: .16em; font-weight: 700; }
+.gover.alarm h1 { font-size: 2.1em; color: #ff8a95; }
+.gbox p { color: var(--dim); font-size: .95em; line-height: 1.45; }
+.gover.alarm .gbox p { color: #ffd0d4; }
+.gcount { font-size: 2.6em; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--g); width: 2.1em; height: 2.1em; display: grid; place-items: center;
+  border-radius: 50%; border: 3px solid color-mix(in srgb, var(--g) 60%, transparent); margin: .1em 0; }
+.gcount:empty { display: none; }
+.gdots { display: flex; gap: .75em; justify-content: center; margin-top: .8em; min-height: 1em; color: var(--g); }
+.gdots i { width: .95em; height: .95em; border-radius: 50%; border: 2px solid color-mix(in srgb, currentColor 55%, transparent); transition: background .12s, transform .12s; }
+.gdots i.on { background: currentColor; border-color: currentColor; transform: scale(1.1); }
+.gdots.bad { animation: gshake .35s; color: var(--bad); }
+@keyframes gshake { 25% { transform: translateX(-.6em); } 75% { transform: translateX(.6em); } }
+.gside .hbtn { margin-top: .8em; }
+.gkeys { display: grid; grid-template-columns: repeat(3, auto); gap: .9em; }
+.gkeys button { width: 4.4em; height: 4.4em; border-radius: 50%; border: 1px solid var(--line); background: var(--item); color: var(--text);
+  font: inherit; font-size: 1.12em; font-weight: 500; display: grid; place-items: center; transition: transform .08s, background .08s; }
+.gover.alarm .gkeys button { background: #ffffff12; border-color: #ffffff30; color: #fff; }
+.gkeys button:active { transform: scale(.93); background: color-mix(in srgb, var(--g) 30%, var(--item)); }
+.gkeys button.del { background: transparent; border-color: transparent; color: var(--dim); }
+.gover .gkeys button.ok { background: var(--g); border-color: var(--g); color: #fff; }
+.gkeys button.ok svg { stroke-width: 2.4; }
+.gafter { display: flex; flex-direction: column; align-items: center; gap: .9em; max-width: 30em; }
+.gafter .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6em; width: 100%; }
+.gafter .hbtn { height: 3.4em; font-size: .95em; }
+.gafter .hbtn.go { background: var(--ok); border-color: var(--ok); color: #fff; }
+.gafter .hbtn.learn { width: 100%; border-color: var(--acc2); color: var(--acc2); }
+.gafter .hbtn.learn.done { background: var(--acc2); color: #fff; }
+
+/* Fotoğraf görüntüleyici */
+.gphoto { position: fixed; inset: 0; z-index: 40; background: #000f; display: flex; flex-direction: column; }
+.gpimg { flex: 1; min-height: 0; position: relative; display: grid; place-items: center; }
+.gpimg img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.gpnav { position: absolute; top: 50%; transform: translateY(-50%); width: 2.4em; height: 2.4em; border-radius: 50%; border: 1px solid #fff4;
+  background: #0008; color: #fff; font-size: 2em; line-height: 1; }
+.gpnav.prev { left: .5em; } .gpnav.next { right: .5em; }
+.gpbar { display: flex; align-items: center; gap: .8em; padding: .8em 1.2em; background: #111; color: #fff; }
+.gpbar span { margin-right: auto; }
+.gpbar b { letter-spacing: .1em; margin-right: .5em; color: var(--warn); }
+.gpbar b.alarm { color: var(--bad); }
+.hbtn.bad { border-color: var(--bad); color: var(--bad); }
+.hbtn.bad.arm { background: var(--bad); color: #fff; }
+.gshot { position: relative; cursor: pointer; }
+.gx { position: absolute; top: .3em; right: .3em; min-width: 2.2em; height: 2.2em; padding: 0 .5em; border-radius: 99px; border: 0;
+  background: #000a; color: #fff; font: inherit; font-size: 1.1em; line-height: 1; }
+.gx.arm { background: var(--bad); font-size: .9em; font-weight: 700; }
+
+/* Temizlik ekranı */
+.cdisk:empty { display: none; }
+.cdbar { display: flex; height: .7em; border-radius: 9px; overflow: hidden; background: var(--track); }
+.cdbar i { background: var(--dim); transition: width .6s; }
+.cdbar i.pick { background: var(--ok); }
+.cdtxt { display: flex; justify-content: space-between; font-size: .82em; color: var(--dim); margin-top: .45em; }
+.cdtxt b { color: var(--text); }
+.cdtxt .ok b, b.ok, .cdtxt .ok { color: var(--ok); }
+.crow.cl { grid-template-columns: 1.6em 2em 1fr auto; border-left-color: transparent; }
+.crow.cl.sel { border-left-color: var(--c); }
+.crow.cl.sel .box { border-color: var(--c); color: var(--c); }
+.crow.cl.empty { opacity: .5; }
+.crow .ci { font-size: 1.45em; line-height: 1; text-align: center; }
+.crow.cl u { display: block; height: .28em; margin-top: .5em; background: var(--track); border-radius: 9px; overflow: hidden; }
+.crow.cl u i { display: block; height: 100%; background: var(--c); border-radius: 9px; transition: width .5s; }
+.crow.cl .sz { display: flex; flex-direction: column; align-items: flex-end; min-width: 6.5em; }
+.crow.cl .sz b { font-size: 1.1em; }
+.crow.cl .sz small { margin: 0; }
+.crow.cl .sz.done { color: var(--ok); font-weight: 600; }
+.spin { width: 1.1em; height: 1.1em; border: 2px solid var(--line); border-top-color: var(--acc); border-radius: 50%; animation: spin .8s linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }

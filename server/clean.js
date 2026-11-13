@@ -25,11 +25,15 @@ async function walk(roots, days, onFile) {
       await Promise.all(files.slice(i, i + 64).map(async (p) => {
         let st;
         try { st = await fsp.lstat(p); } catch { return; }
-        if (days <= 0 || st.mtimeMs < limit) await onFile(p, st.size);
+        if (days <= 0 || st.mtimeMs < limit) await onFile(p, used(st));
       }));
     }
   }
 }
+
+// Diskte gerçekten kaplanan alan: macOS'ta dosya boyutu yanıltır (APFS seyrek / sıkıştırılmış dosyalar, 4 KB bloklar).
+// Başka yerden de bağlı (hard link, ör. pnpm deposu) dosya silinince yer açılmaz; 0 sayılır. Windows'ta blok bilgisi yok.
+const used = (st) => process.platform === 'win32' || !st.blocks && st.blocks !== 0 ? st.size : st.nlink > 1 ? 0 : st.blocks * 512;
 
 async function one(plat, mode, id) {
   const def = plat.cleanDefs()[id];

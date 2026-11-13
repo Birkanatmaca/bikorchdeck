@@ -167,6 +167,15 @@ function icon(pid, file, cb) {
   });
 }
 
+// --- Konuşma: "PROJE ADIYLA" bildirim sesi. Türkçe ses Yelda varsa onunla, yoksa sistemin varsayılan sesiyle. ---
+function speak(text, file, cb) {
+  const args = ['-o', file, '--file-format=m4af', '--data-format=aac', `[[rate 215]] [[pbas 64]] ${text}`];
+  execFile('say', ['-v', 'Yelda', ...args], { timeout: 15000 }, (err) => {
+    if (!err) { cb(null, 'audio/mp4'); return; }
+    execFile('say', args, { timeout: 15000 }, (e2) => cb(e2, 'audio/mp4'));
+  });
+}
+
 function startCollector(state) {
   const extra = async () => {
     state.audio = parseAudio(await osa('get volume settings'));
@@ -184,29 +193,58 @@ function focus(pid, cb) {
     { timeout: 8000 }, (err) => cb(err));
 }
 
+// Temizlik hedefleri: yalnızca yeniden oluşturulabilen önbellekler. Klasör yoksa atlanır.
+const sub = (dir, names) => names.map((n) => path.join(dir, n));
+// Electron / Chromium tabanlı uygulamaların (VS Code, Cursor, Slack, Discord, Notion...) önbellek klasörleri.
+const ELECTRON = ['Cache', 'Code Cache', 'GPUCache', 'CachedData', 'DawnGraphiteCache', 'DawnWebGPUCache', 'Service Worker/CacheStorage'];
+const BROWSERS = ['Google', 'Microsoft Edge', 'BraveSoftware', 'Arc', 'Chromium', 'Vivaldi', 'Opera Software'];
+function electronCaches(sup) {
+  let apps = [];
+  try { apps = fs.readdirSync(sup, { withFileTypes: true }).filter((e) => e.isDirectory() && !BROWSERS.includes(e.name)).map((e) => e.name); } catch { /* yok */ }
+  return apps.flatMap((a) => sub(path.join(sup, a), ELECTRON)).filter((p) => fs.existsSync(p));
+}
 function cleanDefs() {
-  const caches = path.join(os.homedir(), 'Library', 'Caches');
-  const browsers = ['Google/Chrome', 'Microsoft Edge', 'BraveSoftware/Brave-Browser'].map((b) => path.join(caches, b));
+  const home = os.homedir(), lib = path.join(home, 'Library'), caches = path.join(lib, 'Caches'), dev = path.join(lib, 'Developer');
+  const browsers = ['Google/Chrome', 'Google/Chrome Beta', 'Microsoft Edge', 'BraveSoftware/Brave-Browser', 'Chromium', 'Vivaldi'].map((b) => path.join(caches, b));
   return {
     temp: { paths: [os.tmpdir()], days: 1 },
-    browser: { paths: browsers.flatMap((b) => profiles(b, ['Cache', 'Code Cache'])), days: 0 },
-    npm: { paths: [path.join(os.homedir(), '.npm', '_cacache')], days: 0 },
+    // Tarayıcı disk önbelleği + Puppeteer / Playwright'ın headless Chrome önbelleği; Safari kendi önbelleğine izin vermez.
+    browser: { paths: [...browsers.flatMap((b) => profiles(b, ['Cache', 'Code Cache'])), path.join(caches, 'Google', 'Chrome-headless'), path.join(caches, 'Firefox', 'Profiles')], days: 0 },
+    // Derleme ve paket yöneticisi önbellekleri: silinirse bir sonraki derlemede yeniden oluşur (ilk derleme biraz yavaşlar).
+    dev: { paths: [
+      ...sub(caches, ['go-build', 'node-gyp', 'pnpm', 'Yarn', 'ReactNative', 'electron', 'electron-builder', 'cursor-compile-cache', 'pip', 'CocoaPods',
+        'Homebrew', 'staticcheck', 'typescript', 'org.swift.swiftpm', 'com.apple.dt.Xcode', 'JetBrains', 'deno', 'bun']),
+      ...sub(home, ['.cache/uv', '.cache/pip', '.bun/install/cache', '.gradle/caches/build-cache-1', '.gradle/caches/transforms-4']),
+      path.join(dev, 'Xcode', 'DerivedData'), path.join(dev, 'CoreSimulator', 'Caches'),
+    ], days: 0 },
+    // Uygulama önbellekleri: Electron uygulamaları ve Spotify (indirilen çevrimdışı şarkılar burada değil).
+    apps: { paths: [...electronCaches(path.join(lib, 'Application Support')), ...sub(caches, ['com.spotify.client/Data', 'com.spotify.client/Browser', 'Codex/Default'])], days: 0 },
+    npm: { paths: [path.join(home, '.npm', '_cacache')], days: 0 },
+    logs: { paths: [path.join(lib, 'Logs')], days: 7 },
   };
 }
 
-// Çöp Kutusu Finder üzerinden (boyut bilgisi alınamaz, yalnızca öğe sayısı).
+// Çöp Kutusu Finder üzerinden okunur (~/.Trash'i doğrudan okumak Tam Disk Erişimi ister).
+// Finder boyutunu henüz hesaplamadığı klasörler 0 sayılır; yani değer "en az" bu kadardır.
+const TRASH_SIZE = ['-e', 'tell application "Finder" to set l to physical size of every item of trash', '-e', 'set s to 0',
+  '-e', 'repeat with v in l', '-e', 'try', '-e', 'set s to s + v', '-e', 'end try', '-e', 'end repeat', '-e', 'return (s as integer) as text'];
 // DNS temizliği macOS'ta yönetici parolası istediği için burada yok.
 const special = {
   recycle: async (mode, cb) => {
     const r = { id: 'recycle', bytes: 0, count: 0, freed: 0, removed: 0 };
     r.count = parseInt(await osa('tell application "Finder" to count items of trash'), 10) || 0;
+    if (r.count) r.bytes = parseInt(await sh('osascript', TRASH_SIZE), 10) || 0;
     if (mode === 'clean' && r.count) {
       await osa('tell application "Finder" to empty trash');
       r.removed = r.count - (parseInt(await osa('tell application "Finder" to count items of trash'), 10) || 0);
+      if (r.removed === r.count) r.freed = r.bytes;
     }
     cb(null, r);
   },
 };
 
-module.exports = { startCollector, sampleGpu, focus, cleanDefs, special, icon, media, mediaArt, volume, memUsed: null,
+// Nöbet alarmı: ekranı hemen uyutur. "Uykudan sonra parola iste: hemen" açıksa (varsayılan) Mac kilitlenir.
+const lock = (cb) => execFile('pmset', ['displaysleepnow'], { timeout: 5000 }, (e) => cb && cb(e));
+
+module.exports = { startCollector, sampleGpu, focus, cleanDefs, special, icon, media, mediaArt, volume, speak, lock, memUsed: null,
   _test: { parseProcs, parseApps, parseNet, parseMem, parseAudio, parseNow, nowScript } };

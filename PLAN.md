@@ -18,7 +18,7 @@ PC (Windows)                                    Tablet
 ```
 
 - **Veri hep PC'den gelir.** Tablet yalnızca ekran ve dokunmatik yüzeydir.
-- **Bağlantı yalnızca kablo üzerinden.** Ajan sadece `127.0.0.1` dinler; `adb reverse` tabletin `localhost:8787` adresini kablo üzerinden PC'ye bağlar. Wi-Fi'da hiçbir şey açılmaz.
+- **Bağlantı adb üzerinden (USB kablo ya da kablosuz hata ayıklama).** Ajan sadece `127.0.0.1` dinler; `adb reverse` tabletin `localhost:8787` adresini adb kanalı üzerinden PC'ye bağlar. Ağa hiçbir port açılmaz.
 - **Sıfır bağımlılık.** `npm install` gerekmez; Node + Windows'un kendi araçları yeter.
 - Tablette adres `localhost` olduğu için tarayıcı bunu güvenli bağlam sayar: ekranı açık tutma (Wake Lock) ve tam ekran PWA çalışır.
 
@@ -52,6 +52,15 @@ Bilgisayarda elle hiçbir şey çalıştırılmaz:
 
 Tek seferlik tablet ayarı: Geliştirici seçenekleri → USB hata ayıklama; ilk takışta çıkan pencerede **Bu bilgisayara her zaman izin ver**; Chrome menüsü → **Ana ekrana ekle**.
 
+### Wi-Fi ile bağlanma (kablosuz)
+
+Kablo yerine Wi-Fi da kullanılabilir (Android 11+). Tablet ve bilgisayar aynı ağda olmalı. Tek seferlik eşleştirme:
+
+1. Tablette Geliştirici seçenekleri → **Kablosuz hata ayıklama**'yı aç → **Eşleştirme kodu ile cihaz eşleştir**.
+2. Bilgisayarda: `adb pair <ekrandaki IP:port>` ve ekrandaki 6 haneli kod.
+
+Sonrasında ajan ağı 10 saniyede bir tarar, eşleşmiş tableti bulunca kendisi bağlanır ve USB'deki gibi portu yönlendirip paneli açar. Ajan yine yalnızca `127.0.0.1` dinler; trafik adb'nin şifreli kanalından geçer, ağdaki başka cihazlar panele ulaşamaz. Tablet yeniden başlarsa veya ağ değişirse tablette Kablosuz hata ayıklamayı yeniden açmak gerekebilir.
+
 Komutlar: `npm run kur` (açılışa ekle), `npm run kaldir` (açılıştan çıkar), `npm start` (geliştirirken elle çalıştır). Yalnızca belirli bir cihaz bağlansın istenirse `DEVDECK_SERIAL` ortam değişkenine seri numarası yazılır.
 
 ## Yol haritası
@@ -77,42 +86,10 @@ Komutlar: `npm run kur` (açılışa ekle), `npm run kaldir` (açılıştan çı
 - [x] Alt şerit (dock): açık pencereler, etkin olan büyük; dokununca öne gelir. En sağında roket: açılabilir alan (ajan 20 dakikada bir ölçer, silmez) ve temizlik ekranı.
 - [x] ÇALIŞMA ALANI widget'ı: aynı alanda Bikorch ↔ Claude geçiş anahtarı.
 - [x] Gerçek tablette denendi: Galaxy Tab A7 Lite (SM-T220, 1340×800, Android 14)
-
-### Faz 2 — Tableti bağlama ve kiosk
-- [ ] Gerçek tablette deneme, çözünürlüğe göre yerleşim ayarı
-- [ ] macOS modülünü gerçek Mac'te deneme ve düzeltme
-- [x] Ajanı Windows açılışında otomatik başlatma
-- [x] Tablet takılınca port yönlendirme + paneli otomatik açma (gerçek cihazla denenecek)
-- [ ] Tam kiosk: ekran sabitleme veya Fully Kiosk Browser (durum çubuğu tamamen gizli, şarjdayken ekran hep açık)
-
-### Faz 3 — Claude limitleri
-- [ ] **Kalan limit yüzdesi** (5 saatlik ve haftalık) ve sıfırlanma sayacı. Bu bilgi yerel kayıt dosyalarında yok; kaynağı araştırılacak (Claude Code durum satırı verisi ya da uygulamanın kullanım sorgusu).
-- [ ] Oturum detayı: dokununca son mesajlar, çalışan araç, token dökümü
-- [ ] Oturum bitince / onay bekleyince tablette uyarı
-
-### Faz 4 — Dokunmatik kontrol paneli
-- [ ] Sayfalar arası kaydırma (Genel · Claude · Süreçler · Kısayollar)
-- [ ] Kısayol düğmeleri: uygulama aç, komut çalıştır, ses/medya kontrolü
-- [ ] Süreç sonlandırma (onaylı), pencere küçült/kapat
-- [ ] Bir uygulamanın tüm pencereleri (şu an uygulama başına ana pencere listelenir)
-
-### Faz 5 — Geliştirici verileri
-- [ ] Git: açık depoların dalı, değişiklik sayısı
-- [ ] Dinlenen portlar / çalışan dev sunucuları, Docker konteynerleri
-- [ ] CPU sıcaklığı (LibreHardwareMonitor gerekir), eşik uyarıları
-- [ ] Yeni widget türleri: kısayol düğmeleri, medya kontrolü, not, hava durumu, takvim
-- [ ] Birden çok sayfa (kaydırarak geçiş) ve kayıtlı düzen profilleri
-
-## Dosyalar
-
-| Yol | Görev |
-|---|---|
-| `server/index.js` | HTTP + SSE sunucusu, CPU/RAM örnekleme, tablet algılama |
-| `server/claude.js` | Claude oturum kayıtlarını artımlı okur |
-| `server/bikorch.js` | Bikorch veritabanını okur, projeleri ve bildirimleri hazırlar |
-| `server/clean.js` | Temizlik: tarama ve silme (ortak) |
-| `server/platform/win32.js`, `darwin.js` | Sisteme özel toplayıcı, öne getirme, temizlik hedefleri |
-| `server/ps/*.ps1` | Windows: pencere/süreç toplayıcı, öne getirme, DNS ve Geri Dönüşüm |
-| `scripts/autostart.js` | Açılışta başlatmayı kurar / kaldırır (iki sistem) |
-| `public/` | Tablet arayüzü (HTML/CSS/JS, PWA) |
-| `scripts/autostart.ps1`, `devdeck-hidden.vbs` | Windows: açılış kısayolu ve penceresiz başlatma |
+- [x] macOS'ta gerçek Mac'te denendi. Bikorch terminallerinin Claude kayıtları (`Bikorch/cli-profiles/claude/<hesap>/projects`) da okunur; Bikorch'un çalışma klasörleri (`agent-worktrees/<repo_hash>/…`) `agent_isolation_state` tablosuyla asıl projeye eşlenir. Bikorch'un iç oturumları (ana sayfa sohbeti vb.) proje sayılmaz.
+- [x] Wi-Fi bağlantısı (kablosuz adb) ve üst çubukta USB / Wi-Fi göstergesi (ayrı simge ve renk).
+- [x] macOS Çöp Kutusu boyutu Finder'dan okunur ve açılabilir alana eklenir.
+- [x] ChatGPT Codex (`server/codex.js`): `~/.codex/sessions` ve Bikorch'un Codex profilleri okunur (masaüstü, VS Code, CLI). Çalışan / biten işler projelere eşlenir, biten iş "İŞ TAMAM" bildirimi olur; Codex limitleri (5 saat / haftalık), bugünkü token, son yanıt ve oturumlar. ÇALIŞMA ALANI'nda BIKORCH · CLAUDE · CODEX sekmeleri (iş süren sekmede nokta yanar); Bikorch listesinde işi yapan ajan etiketi. Ayrı CODEX widget'ı da eklenebilir.
+- [x] Komik bitti sesleri: Ayarlar → Ses türü bir seçim ekranı açar (dokun: seç ve dinle). Gerçek sesler (gol, tribün, çığlık, eşek, palyaço...) Mixkit ve Wikimedia Commons'tan, konuşanlar macOS Yelda sesiyle; `node scripts/make-sounds.js` indirir, kırpar, karıştırır ve `public/sounds/*.m4a` üretir (kaynaklar `public/sounds/KAYNAKLAR.md`; dosyalar depoda, Windows'ta da çalar). "PROJE ADIYLA" biten işin proje adını ajan o an seslendirir (`/voice`, macOS `say` / Windows System.Speech; metni istemci gönderemez), "RASTGELE" her seferinde başka ses. Kendi seslerin: `data/sounds/` içine atılan mp3/m4a/wav/ogg seçme ekranında görünür. Hata bitişinde komik seslerde hüzünlü trombon çalar.
+- [x] Nöbet modu (`public/guard.js`, `server/guard.js`): tabletin ön kamerası masaya bakar, yüz tanıma tablette yapılır (face-api.js + TensorFlow.js WASM, `public/vendor/face-api`; Mali gibi tablet GPU'ları WebGL'de yarım hassasiyetle yüz bulamadığı için WASM). Başlıktaki NÖBET düğmesi → yüzünü tanıt (12 örnek: düz, sağa, sola, yukarı) ve 4–8 haneli şifre. Sahibi görünüyorsa sessiz; tanımadığı yüz 2 kare üst üste görünürse fotoğraf + "Seni tanıyamadım, şifreni gir" + geri sayım (3/6/10/15 sn), süre dolunca kırmızı alarm, siren, ikinci fotoğraf ve bilgisayar kilitlenir (macOS `pmset displaysleepnow`, Windows LockWorkStation). Doğru şifre ya da sahibinin yüzü alarmı kapatır; şifreden sonra nöbet 2 dk–2 sa susturulur ve "BU BENDİM, YÜZÜMÜ ÖĞREN" ile o anki yüz kayda eklenir. Fotoğraflar `data/guard/intruders` içinde, ayarlar ekranında "MASANA GELENLER" (dokun: büyük görüntüle, ‹ › ile gez, tek tek ya da hepsini sil). Şifre PBKDF2 özeti olarak saklanır, 5 yanlışta 60 sn bekletir. APK'da kamera izni gerekir (sürüm 1.2).
+- [x] Temizlik (macOS): geçici dosyalar, tarayıcı (Chrome / Edge / Brave + headless Chrome), geliştirici önbellekleri (Xcode DerivedData, go-build, pnpm, yarn, React Native, node-gyp, CocoaPods, Homebrew, uv…), uygulama önbellekleri (Electron uygulamalarının Cache / Code Cache / GPUCache klasörleri, Spotify), npm, bir haftadan eski günlükler ve Çöp. Boyut diskte gerçekten kaplanan alandır (blok sayısı; hard link'li dosyalar sayılmaz). Ekranda disk çubuğu ("temizlikten sonra X boş"), her tür için oran çubuğu; alttaki roketin altında türlere göre renkli çubuk.
